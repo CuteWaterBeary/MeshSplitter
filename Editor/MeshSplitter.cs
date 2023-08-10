@@ -10,7 +10,7 @@ public class MeshSplitterEditor : EditorWindow
 	private SkinnedMeshRenderer _mesh_renderer;
 	private MeshFilter _mesh_filter;
 
-	[MenuItem ("MeshSplitter/MeshSplitter Editor")]
+	[MenuItem ("Mesh+Bones/Split Mesh by Materials or Quad")]
 	private static void Create ()
 	{
 		GetWindow<MeshSplitterEditor> ("MeshSplitter");
@@ -33,13 +33,13 @@ public class MeshSplitterEditor : EditorWindow
 		}
 
 		if (_mesh_renderer != null) {
-			if (GUILayout.Button ("split by materials")) {
+			if (GUILayout.Button ("Split by materials")) {
 				SplitByMaterials (_mesh_renderer);
 			}
 			EditorGUILayout.Space ();
 
 			if (_mesh_filter != null) {
-				if (GUILayout.Button ("split by quad")) {
+				if (GUILayout.Button ("Split by quad")) {
 					splitByQuad (_mesh_renderer, _mesh_filter);
 				}
 			}
@@ -136,7 +136,7 @@ public class MeshSplitterEditor : EditorWindow
 
 				if (i % 30 == 0) {
 					EditorUtility.DisplayProgressBar (
-						"処理中", 
+						"processing",
 						string.Format ("submesh:{0}/{1}, triangles:{2}/{3}", j, mesh.subMeshCount, i, triangles.Length),
 						(float)i / triangles.Length
 					);
@@ -148,7 +148,7 @@ public class MeshSplitterEditor : EditorWindow
 		createNewMesh (mesh_renderer, tri_b.Select (n => n.ToArray ()).ToArray (), submesh_dir, mesh_name + "_b");
 		mesh_renderer.gameObject.SetActive (false);
 
-		EditorUtility.ClearProgressBar (); 
+		EditorUtility.ClearProgressBar ();
 	}
 
 	private SkinnedMeshRenderer createNewMesh (SkinnedMeshRenderer original, int[][] triangles, string dirname, string name)
@@ -158,7 +158,7 @@ public class MeshSplitterEditor : EditorWindow
 		var mesh_renderer = gameObject.GetComponent (typeof(SkinnedMeshRenderer)) as SkinnedMeshRenderer;
 		var mesh = Instantiate (mesh_renderer.sharedMesh) as Mesh;
 
-		mesh.subMeshCount = triangles.Length; 
+		mesh.subMeshCount = triangles.Length;
 		for (int i = 0; i < triangles.Length; i++) {
 			mesh.SetTriangles (triangles [i], i);
 		}
