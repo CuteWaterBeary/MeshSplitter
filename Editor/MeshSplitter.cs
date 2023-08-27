@@ -8,9 +8,8 @@ using UnityEditor;
 public class MeshSplitterEditor : EditorWindow
 {
 	private SkinnedMeshRenderer _mesh_renderer;
-	private MeshFilter _mesh_filter;
 
-	[MenuItem ("Mesh+Bones/Split Mesh by Materials or Quad")]
+	[MenuItem ("Mesh+Bones/Split/Split Mesh by Materials")]
 	private static void Create ()
 	{
 		GetWindow<MeshSplitterEditor> ("MeshSplitter");
@@ -22,26 +21,12 @@ public class MeshSplitterEditor : EditorWindow
 		_mesh_renderer = EditorGUILayout.ObjectField ("Mesh", _mesh_renderer, typeof(SkinnedMeshRenderer), true) as SkinnedMeshRenderer;
 		EditorGUILayout.Space ();
 
-		_mesh_filter = EditorGUILayout.ObjectField ("Quad", _mesh_filter, typeof(MeshFilter), true) as MeshFilter;
-		EditorGUILayout.Space ();
-
 		if (EditorGUI.EndChangeCheck ()) {
-		}
-
-		if (_mesh_filter != null && _mesh_filter.sharedMesh.name != "Quad") {
-			_mesh_filter = null;
 		}
 
 		if (_mesh_renderer != null) {
 			if (GUILayout.Button ("Split by materials")) {
 				SplitByMaterials (_mesh_renderer);
-			}
-			EditorGUILayout.Space ();
-
-			if (_mesh_filter != null) {
-				if (GUILayout.Button ("Split by quad")) {
-					splitByQuad (_mesh_renderer, _mesh_filter);
-				}
 			}
 		}
 
@@ -102,54 +87,6 @@ public class MeshSplitterEditor : EditorWindow
 		return Instantiate (gameObject, gameObject.transform.parent) as GameObject;
 	}
 
-	private void splitByQuad (SkinnedMeshRenderer mesh_renderer, MeshFilter mesh_filter)
-	{
-		var plane = createPlane (mesh_filter);
-		var mesh = mesh_renderer.sharedMesh;
-		var matrix = mesh_renderer.transform.localToWorldMatrix;
-
-		string mesh_name = mesh_renderer.gameObject.name;
-		string submesh_dir = getSubmeshPath (mesh_renderer);
-		createFolder (submesh_dir);
-
-		var tri_a = new List<List<int>> ();
-		var tri_b = new List<List<int>> ();
-
-		for (int j = 0; j < mesh.subMeshCount; j++) {
-			var triangles = mesh.GetTriangles (j);
-			tri_a.Add (new List<int> ());
-			tri_b.Add (new List<int> ());
-
-			for (int i = 0; i < triangles.Length; i += 3) {
-				var triangle = triangles.Skip (i).Take (3);
-				bool side = false;
-
-				foreach (int n in triangle) {
-					side = side || plane.GetSide (matrix.MultiplyPoint (mesh.vertices [n]));
-				}
-
-				if (side) {
-					tri_a [j].AddRange (triangle);
-				} else {
-					tri_b [j].AddRange (triangle);
-				}
-
-				if (i % 30 == 0) {
-					EditorUtility.DisplayProgressBar (
-						"processing",
-						string.Format ("submesh:{0}/{1}, triangles:{2}/{3}", j, mesh.subMeshCount, i, triangles.Length),
-						(float)i / triangles.Length
-					);
-				}
-			}
-		}
-
-		createNewMesh (mesh_renderer, tri_a.Select (n => n.ToArray ()).ToArray (), submesh_dir, mesh_name + "_a");
-		createNewMesh (mesh_renderer, tri_b.Select (n => n.ToArray ()).ToArray (), submesh_dir, mesh_name + "_b");
-		mesh_renderer.gameObject.SetActive (false);
-
-		EditorUtility.ClearProgressBar ();
-	}
 
 	private SkinnedMeshRenderer createNewMesh (SkinnedMeshRenderer original, int[][] triangles, string dirname, string name)
 	{
@@ -162,17 +99,9 @@ public class MeshSplitterEditor : EditorWindow
 		for (int i = 0; i < triangles.Length; i++) {
 			mesh.SetTriangles (triangles [i], i);
 		}
-		AssetDatabase.CreateAsset (mesh, Path.Combine (dirname, name + ".asset"));
+		AssetDatabase.CreateAsset (mesh, Path.Combine (dirname, name + ".mesh"));
 		mesh_renderer.sharedMesh = mesh;
 
 		return mesh_renderer;
-	}
-
-	private Plane createPlane (MeshFilter mesh_filter)
-	{
-		var matrix = mesh_filter.transform.localToWorldMatrix;
-		var mesh = mesh_filter.sharedMesh;
-		var vertices = mesh.triangles.Take (3).Select (n => matrix.MultiplyPoint (mesh.vertices [n])).ToArray ();
-		return new Plane (vertices [0], vertices [1], vertices [2]);
 	}
 }
